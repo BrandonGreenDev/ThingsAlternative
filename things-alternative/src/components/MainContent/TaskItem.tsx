@@ -1,6 +1,7 @@
 import React from "react";
 import styled from "@emotion/styled";
 import { FiCircle, FiCheckCircle, FiStar } from "react-icons/fi";
+import TimePicker from "react-time-picker";
 
 interface TaskItemProps {
   title: string;
@@ -64,8 +65,103 @@ const Notes = styled.div({
 const Actions = styled.div({
   display: "flex",
   alignItems: "center",
-  opacity: 0,
-  transition: "opacity 0.2s",
+  gap: "8px",
+});
+
+const DateTimeContainer = styled.div({
+  display: "flex",
+  alignItems: "center",
+  gap: "4px",
+  fontSize: "12px",
+  color: "#666",
+});
+
+const DateInput = styled.input({
+  border: "1px solid #E0E0E0",
+  borderRadius: "4px",
+  padding: "2px 6px",
+  background: "#f5f5f5",
+  color: "#333",
+  fontSize: "11px",
+  height: "24px",
+  width: "100px",
+  cursor: "pointer",
+  "&:hover": {
+    borderColor: "#007AFF",
+  },
+  "&:focus": {
+    borderColor: "#007AFF",
+    outline: "none",
+  },
+  "&::-webkit-calendar-picker-indicator": {
+    cursor: "pointer",
+  },
+});
+
+const TimePickerWrapper = styled.div({
+  ".react-time-picker": {
+    fontSize: "11px",
+    height: "24px",
+    display: "inline-flex",
+    alignItems: "center",
+  },
+  ".react-time-picker__wrapper": {
+    display: "inline-flex",
+    alignItems: "center",
+    border: "none",
+    padding: "0",
+  },
+  ".react-time-picker__inputGroup": {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "2px",
+    padding: "0",
+    background: "none",
+  },
+  ".react-time-picker__inputGroup__input": {
+    background: "#f5f5f5",
+    border: "1px solid #E0E0E0",
+    borderRadius: "4px",
+    padding: "2px 6px",
+    width: "32px !important",
+    height: "24px",
+    fontSize: "11px",
+    textAlign: "center",
+    "&:hover": {
+      borderColor: "#007AFF",
+    },
+    "&:focus": {
+      outline: "none",
+      borderColor: "#007AFF",
+    },
+  },
+  ".react-time-picker__inputGroup__divider": {
+    padding: "0 2px",
+  },
+  ".react-time-picker__inputGroup__amPm": {
+    background: "#f5f5f5",
+    border: "1px solid #E0E0E0",
+    borderRadius: "4px",
+    padding: "2px 6px",
+    fontSize: "11px",
+    height: "24px",
+    width: "44px",
+    marginLeft: "2px",
+    textAlign: "center",
+    appearance: "none",
+    cursor: "pointer",
+    "&:hover": {
+      borderColor: "#007AFF",
+    },
+    "&:focus": {
+      outline: "none",
+      borderColor: "#007AFF",
+    },
+  },
+  // Hide all buttons and unnecessary elements
+  ".react-time-picker__button, .react-time-picker__clock": {
+    display: "none",
+  },
 });
 
 const StarButton = styled.button<{ isStarred?: boolean }>(({ isStarred }) => ({

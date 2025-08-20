@@ -14,9 +14,15 @@ const SidebarContainer = styled.div({
   padding: "16px 0",
 });
 
-const Sidebar: React.FC = () => {
-  const [selectedItem, setSelectedItem] = React.useState("inbox");
+interface SidebarProps {
+  selectedSidebar: string;
+  setSelectedSidebar: (val: string) => void;
+}
 
+const Sidebar: React.FC<SidebarProps> = ({
+  selectedSidebar,
+  setSelectedSidebar,
+}) => {
   return (
     <SidebarContainer>
       <SidebarSection>
@@ -24,51 +30,51 @@ const Sidebar: React.FC = () => {
           icon={FiInbox({ size: 18 })}
           text="Inbox"
           badge={2}
-          selected={selectedItem === "inbox"}
-          onClick={() => setSelectedItem("inbox")}
+          selected={selectedSidebar === "inbox"}
+          onClick={() => setSelectedSidebar("inbox")}
         />
         <SidebarListItem
           icon={FiCalendar({ size: 18 })}
           text="Today"
           badge={8}
-          selected={selectedItem === "today"}
-          onClick={() => setSelectedItem("today")}
+          selected={selectedSidebar === "today"}
+          onClick={() => setSelectedSidebar("today")}
         />
         <SidebarListItem
           icon={FiClock({ size: 18 })}
           text="Upcoming"
-          selected={selectedItem === "upcoming"}
-          onClick={() => setSelectedItem("upcoming")}
+          selected={selectedSidebar === "upcoming"}
+          onClick={() => setSelectedSidebar("upcoming")}
         />
         <SidebarListItem
           icon={FiArchive({ size: 18 })}
           text="Someday"
-          selected={selectedItem === "someday"}
-          onClick={() => setSelectedItem("someday")}
+          selected={selectedSidebar === "someday"}
+          onClick={() => setSelectedSidebar("someday")}
         />
         <SidebarListItem
           icon={FiBook({ size: 18 })}
           text="Logbook"
-          selected={selectedItem === "logbook"}
-          onClick={() => setSelectedItem("logbook")}
+          selected={selectedSidebar === "logbook"}
+          onClick={() => setSelectedSidebar("logbook")}
         />
       </SidebarSection>
 
       <SidebarSection title="Projects">
         <SidebarListItem
           text="Family"
-          selected={selectedItem === "family"}
-          onClick={() => setSelectedItem("family")}
+          selected={selectedSidebar === "family"}
+          onClick={() => setSelectedSidebar("family")}
         />
         <SidebarListItem
           text="Work"
-          selected={selectedItem === "work"}
-          onClick={() => setSelectedItem("work")}
+          selected={selectedSidebar === "work"}
+          onClick={() => setSelectedSidebar("work")}
         />
         <SidebarListItem
           text="Hobbies"
-          selected={selectedItem === "hobbies"}
-          onClick={() => setSelectedItem("hobbies")}
+          selected={selectedSidebar === "hobbies"}
+          onClick={() => setSelectedSidebar("hobbies")}
         />
       </SidebarSection>
     </SidebarContainer>
