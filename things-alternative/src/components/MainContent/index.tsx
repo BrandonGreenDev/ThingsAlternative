@@ -91,6 +91,11 @@ const MainContent: React.FC = () => {
   const [selectedTag, setSelectedTag] = React.useState("all");
   const [selectedSidebar, setSelectedSidebar] = React.useState("inbox");
 
+  // Reset tag filter to "all" when sidebar changes
+  React.useEffect(() => {
+    setSelectedTag("all");
+  }, [selectedSidebar]);
+
   function getInitialSections(): Section[] {
     const stored = localStorage.getItem("things_sections");
     if (stored) {
@@ -189,6 +194,22 @@ const MainContent: React.FC = () => {
     );
   };
 
+  const handleToggleStar = (sectionId: string, taskId: string) => {
+    setSections(
+      sections.map((section) => {
+        if (section.id === sectionId) {
+          return {
+            ...section,
+            tasks: section.tasks.map((task) =>
+              task.id === taskId ? { ...task, isStarred: !task.isStarred } : task
+            ),
+          };
+        }
+        return section;
+      })
+    );
+  };
+
   const handleSectionDateChange = (sectionId: string, newDate: Date) => {
     setSections(
       sections.map((section) => {
@@ -244,12 +265,160 @@ const MainContent: React.FC = () => {
     );
   };
 
+  // Calculate dynamic counts for filter tags based on current sidebar selection
+  const getTaskCounts = () => {
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
+    
+    let allTasksCount = 0;
+    let importantTasksCount = 0;
+    let todayTasksCount = 0;
+
+    // Get sections that match current sidebar filter
+    const filteredSections = sections.filter((section) => {
+      // If "important" tag filter is selected, only show sections with starred tasks
+      if (selectedTag === "important") {
+        const hasImportantTasks = section.tasks.some((task) => task.isStarred);
+        if (!hasImportantTasks) return false;
+      }
+
+      switch (selectedSidebar) {
+        case "inbox":
+          return true;
+        case "today": {
+          const sectionDateStr = section.dueDate.toISOString().split("T")[0];
+          return sectionDateStr === todayStr;
+        }
+        case "upcoming":
+          return section.dueDate > today;
+        case "someday":
+          return section.dueDate > new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+        case "logbook":
+          return section.tasks.some((task) => task.isCompleted);
+        default:
+          return section.title.toLowerCase().includes(selectedSidebar.toLowerCase());
+      }
+    });
+
+    // Count tasks within the filtered sections
+    filteredSections.forEach((section) => {
+      const sectionDateStr = section.dueDate.toISOString().split("T")[0];
+      
+      section.tasks.forEach((task) => {
+        // Apply additional filtering based on sidebar context
+        let includeTask = true;
+        
+        if (selectedSidebar === "upcoming" && task.dueDate <= today) {
+          includeTask = false;
+        }
+        if (selectedSidebar === "logbook" && !task.isCompleted) {
+          includeTask = false;
+        }
+        
+        if (includeTask) {
+          allTasksCount++;
+          if (task.isStarred) {
+            importantTasksCount++;
+          }
+          // Count tasks that are in sections due today
+          if (sectionDateStr === todayStr) {
+            todayTasksCount++;
+          }
+        }
+      });
+    });
+
+    return {
+      all: allTasksCount,
+      important: importantTasksCount,
+      today: todayTasksCount
+    };
+  };
+
+  const taskCounts = getTaskCounts();
+
+  // Calculate counts for sidebar sections
+  const getSidebarCounts = () => {
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
+    
+    let inboxCount = 0;
+    let todayCount = 0;
+    let upcomingCount = 0;
+    let somedayCount = 0;
+    let logbookCount = 0;
+    let familyCount = 0;
+    let workCount = 0;
+    let hobbiesCount = 0;
+
+    sections.forEach((section) => {
+      const sectionDateStr = section.dueDate.toISOString().split("T")[0];
+      const taskCount = section.tasks.length;
+      
+      // Inbox shows all sections
+      inboxCount += taskCount;
+      
+      // Today - sections due today
+      if (sectionDateStr === todayStr) {
+        todayCount += taskCount;
+      }
+      
+      // Upcoming - sections due in the future
+      if (section.dueDate > today) {
+        upcomingCount += taskCount;
+      }
+      
+      // Someday - sections due more than 7 days from now
+      if (section.dueDate > new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)) {
+        somedayCount += taskCount;
+      }
+      
+      // Logbook - sections with completed tasks
+      const completedTasks = section.tasks.filter(task => task.isCompleted).length;
+      if (completedTasks > 0) {
+        logbookCount += completedTasks;
+      }
+      
+      // Projects - sections that match project names
+      if (section.title.toLowerCase().includes("family")) {
+        familyCount += taskCount;
+      }
+      if (section.title.toLowerCase().includes("work")) {
+        workCount += taskCount;
+      }
+      if (section.title.toLowerCase().includes("hobbies")) {
+        hobbiesCount += taskCount;
+      }
+    });
+
+    return {
+      inbox: inboxCount,
+      today: todayCount,
+      upcoming: upcomingCount,
+      someday: somedayCount,
+      logbook: logbookCount,
+      family: familyCount,
+      work: workCount,
+      hobbies: hobbiesCount,
+    };
+  };
+
+  const sidebarCounts = getSidebarCounts();
+
   return (
     <div style={{ display: "flex" }}>
-      <Sidebar
-        selectedSidebar={selectedSidebar}
-        setSelectedSidebar={setSelectedSidebar}
-      />
+      <div style={{ 
+        width: "280px", 
+        minWidth: "280px",
+        borderRight: "1px solid #E0E0E0",
+        backgroundColor: "#F5F5F5"
+      }}>
+        <Sidebar
+          selectedSidebar={selectedSidebar}
+          setSelectedSidebar={setSelectedSidebar}
+          counts={sidebarCounts}
+        />
+      </div>
       <Container>
         <Header>
           <Title>Prepare Presentation</Title>
@@ -259,22 +428,25 @@ const MainContent: React.FC = () => {
         <TagsContainer>
           <FilterTag
             label="All"
-            count={8}
+            count={taskCounts.all}
             isSelected={selectedTag === "all"}
             onClick={() => setSelectedTag("all")}
           />
           <FilterTag
             label="Important"
-            count={3}
+            count={taskCounts.important}
             isSelected={selectedTag === "important"}
             onClick={() => setSelectedTag("important")}
           />
-          <FilterTag
-            label="Today"
-            count={2}
-            isSelected={selectedTag === "today"}
-            onClick={() => setSelectedTag("today")}
-          />
+          {/* Only show Today filter when not already in Today sidebar section */}
+          {selectedSidebar !== "today" && (
+            <FilterTag
+              label="Today"
+              count={taskCounts.today}
+              isSelected={selectedTag === "today"}
+              onClick={() => setSelectedTag("today")}
+            />
+          )}
         </TagsContainer>
 
         {sections
@@ -284,18 +456,27 @@ const MainContent: React.FC = () => {
             const allowTodayTasks =
               selectedSidebar === "today" || selectedSidebar === "inbox";
 
+            // If "important" tag filter is selected, only show sections with starred tasks
+            if (selectedTag === "important") {
+              const hasImportantTasks = section.tasks.some((task) => task.isStarred);
+              if (!hasImportantTasks) return false;
+            }
+
+            // If "today" tag filter is selected, only show sections due today
+            if (selectedTag === "today") {
+              const sectionDateStr = section.dueDate.toISOString().split("T")[0];
+              return sectionDateStr === todayStr;
+            }
+
             switch (selectedSidebar) {
               case "inbox":
                 return true;
               case "today": {
+                // Only show sections that have a due date of today
                 const sectionDateStr = section.dueDate
                   .toISOString()
                   .split("T")[0];
-                const hasTodayTasks = section.tasks.some((task) => {
-                  const taskDateStr = task.dueDate.toISOString().split("T")[0];
-                  return taskDateStr === todayStr;
-                });
-                return sectionDateStr === todayStr || hasTodayTasks;
+                return sectionDateStr === todayStr;
               }
               case "upcoming":
                 return section.dueDate > today;
@@ -330,18 +511,23 @@ const MainContent: React.FC = () => {
                   const today = new Date();
                   const todayStr = today.toISOString().split("T")[0];
                   const taskDateStr = task.dueDate.toISOString().split("T")[0];
-                  const allowTodayTasks =
-                    selectedSidebar === "today" || selectedSidebar === "inbox";
 
+                  // Apply tag filtering first
                   if (selectedTag === "important" && !task.isStarred) {
                     return false;
                   }
                   if (selectedTag === "today") {
                     return taskDateStr === todayStr;
                   }
+                  if (selectedTag === "all") {
+                    return true; // Show all tasks when "All" filter is selected
+                  }
 
+                  // Apply sidebar filtering for tasks
                   if (selectedSidebar === "today") {
-                    return taskDateStr === todayStr;
+                    // When "Today" is selected in sidebar, show all tasks in sections that are due today
+                    // The section filtering already ensures only today's sections are shown
+                    return true;
                   }
                   if (selectedSidebar === "upcoming") {
                     return task.dueDate > today;
@@ -356,9 +542,12 @@ const MainContent: React.FC = () => {
                   ) {
                     return true;
                   }
-                  if (taskDateStr === todayStr) {
-                    return allowTodayTasks;
+                  
+                  // For inbox and other cases, apply the original today task filtering
+                  if (selectedSidebar === "inbox") {
+                    return true; // Show all tasks in inbox
                   }
+                  
                   return true;
                 })
                 .map((task) => (
@@ -369,6 +558,9 @@ const MainContent: React.FC = () => {
                     isStarred={task.isStarred}
                     onToggleComplete={() =>
                       handleTaskComplete(section.id, task.id)
+                    }
+                    onToggleStar={() =>
+                      handleToggleStar(section.id, task.id)
                     }
                     onTitleChange={(newTitle) =>
                       handleTaskTitleChange(section.id, task.id, newTitle)
