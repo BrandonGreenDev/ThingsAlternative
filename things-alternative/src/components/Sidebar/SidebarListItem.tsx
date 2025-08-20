@@ -1,7 +1,6 @@
-import React from 'react';
-import { styled } from '@mui/material/styles';
-import { ListItem as MuiListItem, ListItemIcon, ListItemText } from '@mui/material';
-import TagBadge from '../common/TagBadge';
+import React from "react";
+import styled from "@emotion/styled";
+import TagBadge from "../common/TagBadge";
 
 interface SidebarListItemProps {
   icon?: React.ReactNode;
@@ -11,29 +10,36 @@ interface SidebarListItemProps {
   onClick?: () => void;
 }
 
-const StyledListItem = styled(MuiListItem)<{ selected?: boolean }>(({ selected }) => ({
-  padding: '8px 16px',
-  cursor: 'pointer',
-  backgroundColor: selected ? 'rgba(0, 122, 255, 0.1)' : 'transparent',
-  '&:hover': {
-    backgroundColor: selected ? 'rgba(0, 122, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)',
+const StyledListItem = styled.div<{ selected?: boolean }>(({ selected }) => ({
+  padding: "8px 16px",
+  cursor: "pointer",
+  backgroundColor: selected ? "rgba(0, 122, 255, 0.1)" : "transparent",
+  "&:hover": {
+    backgroundColor: selected
+      ? "rgba(0, 122, 255, 0.1)"
+      : "rgba(0, 0, 0, 0.04)",
   },
-  borderRadius: '8px',
-  margin: '0 8px',
-  width: 'auto',
+  borderRadius: "8px",
+  margin: "0 8px",
+  width: "auto",
+  display: "flex",
+  alignItems: "center",
 }));
 
-const StyledListItemText = styled(ListItemText)<{ selected?: boolean }>(({ selected }) => ({
-  '& .MuiListItemText-primary': {
-    fontSize: '14px',
+const StyledListItemText = styled.span<{ selected?: boolean }>(
+  ({ selected }) => ({
+    fontSize: "14px",
     fontWeight: selected ? 600 : 400,
-    color: selected ? '#007AFF' : '#333333',
-  },
-}));
+    color: selected ? "#007AFF" : "#333333",
+    flex: 1,
+  })
+);
 
-const IconWrapper = styled(ListItemIcon)<{ selected?: boolean }>(({ selected }) => ({
-  minWidth: '32px',
-  color: selected ? '#007AFF' : '#666666',
+const IconWrapper = styled.div<{ selected?: boolean }>(({ selected }) => ({
+  minWidth: "32px",
+  color: selected ? "#007AFF" : "#666666",
+  display: "flex",
+  alignItems: "center",
 }));
 
 const SidebarListItem: React.FC<SidebarListItemProps> = ({
@@ -46,7 +52,7 @@ const SidebarListItem: React.FC<SidebarListItemProps> = ({
   return (
     <StyledListItem selected={selected} onClick={onClick}>
       {icon && <IconWrapper selected={selected}>{icon}</IconWrapper>}
-      <StyledListItemText selected={selected} primary={text} />
+      <StyledListItemText selected={selected}>{text}</StyledListItemText>
       {badge !== undefined && <TagBadge count={badge} />}
     </StyledListItem>
   );
