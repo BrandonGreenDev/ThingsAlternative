@@ -1,6 +1,7 @@
 import React from "react";
 import styled from "@emotion/styled";
 import Sidebar from "./components/Sidebar";
+import MainContent from "./components/MainContent";
 
 // Styled components
 const AppContainer = styled.div({
@@ -22,7 +23,6 @@ const MainContentContainer = styled.div({
   height: "100%",
   overflow: "auto",
   backgroundColor: "#FFFFFF",
-  padding: "20px",
 });
 
 function App() {
@@ -32,8 +32,7 @@ function App() {
         <Sidebar />
       </SidebarContainer>
       <MainContentContainer>
-        {/* Main content component will go here */}
-        <div>Main Content</div>
+        <MainContent />
       </MainContentContainer>
     </AppContainer>
   );
