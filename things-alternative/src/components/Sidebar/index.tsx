@@ -9,24 +9,16 @@ import {
 } from "react-icons/fi";
 import SidebarSection from "./SidebarSection";
 import SidebarListItem from "./SidebarListItem";
+import { SidebarSelection, SidebarCounts } from "../../context/types";
 
 const SidebarContainer = styled.div({
   padding: "16px 0",
 });
 
 interface SidebarProps {
-  selectedSidebar: string;
-  setSelectedSidebar: (val: string) => void;
-  counts: {
-    inbox: number;
-    today: number;
-    upcoming: number;
-    someday: number;
-    logbook: number;
-    family: number;
-    work: number;
-    hobbies: number;
-  };
+  selectedSidebar: SidebarSelection;
+  setSelectedSidebar: (val: SidebarSelection) => void;
+  counts: SidebarCounts;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({

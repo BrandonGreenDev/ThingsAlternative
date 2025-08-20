@@ -1,6 +1,7 @@
 import React from "react";
 import styled from "@emotion/styled";
 import MainContent from "./components/MainContent";
+import { AppProvider } from "./context/AppContext";
 
 // Styled components
 const AppContainer = styled.div({
@@ -11,9 +12,11 @@ const AppContainer = styled.div({
 
 function App() {
   return (
-    <AppContainer>
-      <MainContent />
-    </AppContainer>
+    <AppProvider>
+      <AppContainer>
+        <MainContent />
+      </AppContainer>
+    </AppProvider>
   );
 }
 

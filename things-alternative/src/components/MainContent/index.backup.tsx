@@ -6,7 +6,7 @@ import FilterTag from "./FilterTag";
 import Sidebar from "../Sidebar";
 import type { IconType } from "react-icons";
 import { FiMoreHorizontal } from "react-icons/fi";
-import { useAppContext } from "../../context/AppContext";
+import { SidebarSelection } from "../../context/types";
 
 const MoreHorizontal = FiMoreHorizontal as IconType;
 
@@ -70,26 +70,67 @@ const TagsContainer = styled.div({
   marginBottom: "32px",
 });
 
+interface Task {
+  id: string;
+  title: string;
+  notes?: string;
+  isCompleted: boolean;
+  isStarred: boolean;
+  dueDate: Date;
+  dueTime?: string;
+}
+
+interface Section {
+  id: string;
+  title: string;
+  tasks: Task[];
+  dueDate: Date;
+  dueTime?: string;
+}
+
 const MainContent: React.FC = () => {
-  // Get everything from our simple Context
-  const {
-    sections,
-    selectedTag,
-    selectedSidebar,
-    newSectionTitle,
-    isAddingSectionTitle,
-    setSelectedTag,
-    setSelectedSidebar,
-    setNewSectionTitle,
-    setIsAddingSectionTitle,
-    addSection,
-    addTask,
-    toggleTaskComplete,
-    toggleTaskStar,
-    updateTaskTitle,
-    updateSectionDate,
-    updateSectionTime,
-  } = useAppContext();
+  const [selectedTag, setSelectedTag] = React.useState("all");
+  const [selectedSidebar, setSelectedSidebar] =
+    React.useState<SidebarSelection>("inbox");
+
+  // Reset tag filter to "all" when sidebar changes
+  React.useEffect(() => {
+    setSelectedTag("all");
+  }, [selectedSidebar]);
+
+  function getInitialSections(): Section[] {
+    const stored = localStorage.getItem("things_sections");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          return parsed.map((section: any) => ({
+            ...section,
+            dueDate: section.dueDate ? new Date(section.dueDate) : new Date(),
+            tasks: Array.isArray(section.tasks)
+              ? section.tasks.map((task: any) => ({
+                  ...task,
+                  dueDate: task.dueDate ? new Date(task.dueDate) : new Date(),
+                }))
+              : [],
+          }));
+        }
+      } catch (e) {
+        localStorage.removeItem("things_sections");
+      }
+    }
+    return [];
+  }
+
+  const [sections, setSections] = React.useState<Section[]>(
+    getInitialSections()
+  );
+  const [newSectionTitle, setNewSectionTitle] = React.useState("");
+  const [isAddingSectionTitle, setIsAddingSectionTitle] = React.useState(false);
+
+  React.useEffect(() => {
+    localStorage.setItem("things_sections", JSON.stringify(sections));
+  }, [sections]);
 
   const handleAddSection = () => {
     setIsAddingSectionTitle(true);
@@ -99,14 +140,136 @@ const MainContent: React.FC = () => {
     e: React.KeyboardEvent<HTMLInputElement>
   ) => {
     if (e.key === "Enter" && newSectionTitle.trim()) {
-      addSection(newSectionTitle);
+      setSections([
+        ...sections,
+        {
+          id: Date.now().toString(),
+          title: newSectionTitle.trim(),
+          tasks: [],
+          dueDate: new Date(),
+          dueTime: undefined,
+        },
+      ]);
+      setNewSectionTitle("");
+      setIsAddingSectionTitle(false);
     } else if (e.key === "Escape") {
       setNewSectionTitle("");
       setIsAddingSectionTitle(false);
     }
   };
 
-  // Calculate task counts for filter tags
+  const handleTaskComplete = (sectionId: string, taskId: string) => {
+    setSections(
+      sections.map((section) => {
+        if (section.id === sectionId) {
+          return {
+            ...section,
+            tasks: section.tasks.map((task) =>
+              task.id === taskId
+                ? { ...task, isCompleted: !task.isCompleted }
+                : task
+            ),
+          };
+        }
+        return section;
+      })
+    );
+  };
+
+  const handleTaskTitleChange = (
+    sectionId: string,
+    taskId: string,
+    newTitle: string
+  ) => {
+    setSections(
+      sections.map((section) => {
+        if (section.id === sectionId) {
+          return {
+            ...section,
+            tasks: section.tasks.map((task) =>
+              task.id === taskId ? { ...task, title: newTitle } : task
+            ),
+          };
+        }
+        return section;
+      })
+    );
+  };
+
+  const handleToggleStar = (sectionId: string, taskId: string) => {
+    setSections(
+      sections.map((section) => {
+        if (section.id === sectionId) {
+          return {
+            ...section,
+            tasks: section.tasks.map((task) =>
+              task.id === taskId
+                ? { ...task, isStarred: !task.isStarred }
+                : task
+            ),
+          };
+        }
+        return section;
+      })
+    );
+  };
+
+  const handleSectionDateChange = (sectionId: string, newDate: Date) => {
+    setSections(
+      sections.map((section) => {
+        if (section.id === sectionId) {
+          return {
+            ...section,
+            dueDate: newDate,
+          };
+        }
+        return section;
+      })
+    );
+  };
+
+  const handleSectionTimeChange = (
+    sectionId: string,
+    newTime: string | undefined
+  ) => {
+    setSections(
+      sections.map((section) => {
+        if (section.id === sectionId) {
+          return {
+            ...section,
+            dueTime: newTime,
+          };
+        }
+        return section;
+      })
+    );
+  };
+
+  const handleAddTask = (sectionId: string) => {
+    setSections(
+      sections.map((section) => {
+        if (section.id === sectionId) {
+          return {
+            ...section,
+            tasks: [
+              ...section.tasks,
+              {
+                id: Date.now().toString(),
+                title: "",
+                isCompleted: false,
+                isStarred: false,
+                dueDate: new Date(),
+                dueTime: undefined,
+              },
+            ],
+          };
+        }
+        return section;
+      })
+    );
+  };
+
+  // Calculate dynamic counts for filter tags based on current sidebar selection
   const getTaskCounts = () => {
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
@@ -117,6 +280,7 @@ const MainContent: React.FC = () => {
 
     // Get sections that match current sidebar filter
     const filteredSections = sections.filter((section) => {
+      // If "important" tag filter is selected, only show sections with starred tasks
       if (selectedTag === "important") {
         const hasImportantTasks = section.tasks.some((task) => task.isStarred);
         if (!hasImportantTasks) return false;
@@ -150,6 +314,7 @@ const MainContent: React.FC = () => {
       const sectionDateStr = section.dueDate.toISOString().split("T")[0];
 
       section.tasks.forEach((task) => {
+        // Apply additional filtering based on sidebar context
         let includeTask = true;
 
         if (selectedSidebar === "upcoming" && task.dueDate <= today) {
@@ -164,6 +329,7 @@ const MainContent: React.FC = () => {
           if (task.isStarred) {
             importantTasksCount++;
           }
+          // Count tasks that are in sections due today
           if (sectionDateStr === todayStr) {
             todayTasksCount++;
           }
@@ -178,7 +344,9 @@ const MainContent: React.FC = () => {
     };
   };
 
-  // Calculate sidebar counts
+  const taskCounts = getTaskCounts();
+
+  // Calculate counts for sidebar sections
   const getSidebarCounts = () => {
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
@@ -196,22 +364,27 @@ const MainContent: React.FC = () => {
       const sectionDateStr = section.dueDate.toISOString().split("T")[0];
       const taskCount = section.tasks.length;
 
+      // Inbox shows all sections
       inboxCount += taskCount;
 
+      // Today - sections due today
       if (sectionDateStr === todayStr) {
         todayCount += taskCount;
       }
 
+      // Upcoming - sections due in the future
       if (section.dueDate > today) {
         upcomingCount += taskCount;
       }
 
+      // Someday - sections due more than 7 days from now
       if (
         section.dueDate > new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
       ) {
         somedayCount += taskCount;
       }
 
+      // Logbook - sections with completed tasks
       const completedTasks = section.tasks.filter(
         (task) => task.isCompleted
       ).length;
@@ -219,6 +392,7 @@ const MainContent: React.FC = () => {
         logbookCount += completedTasks;
       }
 
+      // Projects - sections that match project names
       if (section.title.toLowerCase().includes("family")) {
         familyCount += taskCount;
       }
@@ -242,7 +416,6 @@ const MainContent: React.FC = () => {
     };
   };
 
-  const taskCounts = getTaskCounts();
   const sidebarCounts = getSidebarCounts();
 
   return (
@@ -280,6 +453,7 @@ const MainContent: React.FC = () => {
             isSelected={selectedTag === "important"}
             onClick={() => setSelectedTag("important")}
           />
+          {/* Only show Today filter when not already in Today sidebar section */}
           {selectedSidebar !== "today" && (
             <FilterTag
               label="Today"
@@ -294,7 +468,10 @@ const MainContent: React.FC = () => {
           .filter((section) => {
             const today = new Date();
             const todayStr = today.toISOString().split("T")[0];
+            const allowTodayTasks =
+              selectedSidebar === "today" || selectedSidebar === "inbox";
 
+            // If "important" tag filter is selected, only show sections with starred tasks
             if (selectedTag === "important") {
               const hasImportantTasks = section.tasks.some(
                 (task) => task.isStarred
@@ -302,6 +479,7 @@ const MainContent: React.FC = () => {
               if (!hasImportantTasks) return false;
             }
 
+            // If "today" tag filter is selected, only show sections due today
             if (selectedTag === "today") {
               const sectionDateStr = section.dueDate
                 .toISOString()
@@ -313,6 +491,7 @@ const MainContent: React.FC = () => {
               case "inbox":
                 return true;
               case "today": {
+                // Only show sections that have a due date of today
                 const sectionDateStr = section.dueDate
                   .toISOString()
                   .split("T")[0];
@@ -339,8 +518,12 @@ const MainContent: React.FC = () => {
               title={section.title}
               dueDate={section.dueDate}
               dueTime={section.dueTime}
-              onDateChange={(newDate) => updateSectionDate(section.id, newDate)}
-              onTimeChange={(newTime) => updateSectionTime(section.id, newTime)}
+              onDateChange={(newDate) =>
+                handleSectionDateChange(section.id, newDate)
+              }
+              onTimeChange={(newTime) =>
+                handleSectionTimeChange(section.id, newTime)
+              }
             >
               {section.tasks
                 .filter((task) => {
@@ -348,6 +531,7 @@ const MainContent: React.FC = () => {
                   const todayStr = today.toISOString().split("T")[0];
                   const taskDateStr = task.dueDate.toISOString().split("T")[0];
 
+                  // Apply tag filtering first
                   if (selectedTag === "important" && !task.isStarred) {
                     return false;
                   }
@@ -355,10 +539,13 @@ const MainContent: React.FC = () => {
                     return taskDateStr === todayStr;
                   }
                   if (selectedTag === "all") {
-                    return true;
+                    return true; // Show all tasks when "All" filter is selected
                   }
 
+                  // Apply sidebar filtering for tasks
                   if (selectedSidebar === "today") {
+                    // When "Today" is selected in sidebar, show all tasks in sections that are due today
+                    // The section filtering already ensures only today's sections are shown
                     return true;
                   }
                   if (selectedSidebar === "upcoming") {
@@ -375,8 +562,9 @@ const MainContent: React.FC = () => {
                     return true;
                   }
 
+                  // For inbox and other cases, apply the original today task filtering
                   if (selectedSidebar === "inbox") {
-                    return true;
+                    return true; // Show all tasks in inbox
                   }
 
                   return true;
@@ -388,15 +576,15 @@ const MainContent: React.FC = () => {
                     isCompleted={task.isCompleted}
                     isStarred={task.isStarred}
                     onToggleComplete={() =>
-                      toggleTaskComplete(section.id, task.id)
+                      handleTaskComplete(section.id, task.id)
                     }
-                    onToggleStar={() => toggleTaskStar(section.id, task.id)}
+                    onToggleStar={() => handleToggleStar(section.id, task.id)}
                     onTitleChange={(newTitle) =>
-                      updateTaskTitle(section.id, task.id, newTitle)
+                      handleTaskTitleChange(section.id, task.id, newTitle)
                     }
                   />
                 ))}
-              <AddButton onClick={() => addTask(section.id)}>
+              <AddButton onClick={() => handleAddTask(section.id)}>
                 + Add Task
               </AddButton>
             </TaskSection>
