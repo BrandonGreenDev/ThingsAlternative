@@ -201,7 +201,9 @@ const MainContent: React.FC = () => {
           return {
             ...section,
             tasks: section.tasks.map((task) =>
-              task.id === taskId ? { ...task, isStarred: !task.isStarred } : task
+              task.id === taskId
+                ? { ...task, isStarred: !task.isStarred }
+                : task
             ),
           };
         }
@@ -269,7 +271,7 @@ const MainContent: React.FC = () => {
   const getTaskCounts = () => {
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
-    
+
     let allTasksCount = 0;
     let importantTasksCount = 0;
     let todayTasksCount = 0;
@@ -292,29 +294,34 @@ const MainContent: React.FC = () => {
         case "upcoming":
           return section.dueDate > today;
         case "someday":
-          return section.dueDate > new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+          return (
+            section.dueDate >
+            new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+          );
         case "logbook":
           return section.tasks.some((task) => task.isCompleted);
         default:
-          return section.title.toLowerCase().includes(selectedSidebar.toLowerCase());
+          return section.title
+            .toLowerCase()
+            .includes(selectedSidebar.toLowerCase());
       }
     });
 
     // Count tasks within the filtered sections
     filteredSections.forEach((section) => {
       const sectionDateStr = section.dueDate.toISOString().split("T")[0];
-      
+
       section.tasks.forEach((task) => {
         // Apply additional filtering based on sidebar context
         let includeTask = true;
-        
+
         if (selectedSidebar === "upcoming" && task.dueDate <= today) {
           includeTask = false;
         }
         if (selectedSidebar === "logbook" && !task.isCompleted) {
           includeTask = false;
         }
-        
+
         if (includeTask) {
           allTasksCount++;
           if (task.isStarred) {
@@ -331,7 +338,7 @@ const MainContent: React.FC = () => {
     return {
       all: allTasksCount,
       important: importantTasksCount,
-      today: todayTasksCount
+      today: todayTasksCount,
     };
   };
 
@@ -341,7 +348,7 @@ const MainContent: React.FC = () => {
   const getSidebarCounts = () => {
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
-    
+
     let inboxCount = 0;
     let todayCount = 0;
     let upcomingCount = 0;
@@ -354,31 +361,35 @@ const MainContent: React.FC = () => {
     sections.forEach((section) => {
       const sectionDateStr = section.dueDate.toISOString().split("T")[0];
       const taskCount = section.tasks.length;
-      
+
       // Inbox shows all sections
       inboxCount += taskCount;
-      
+
       // Today - sections due today
       if (sectionDateStr === todayStr) {
         todayCount += taskCount;
       }
-      
+
       // Upcoming - sections due in the future
       if (section.dueDate > today) {
         upcomingCount += taskCount;
       }
-      
+
       // Someday - sections due more than 7 days from now
-      if (section.dueDate > new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)) {
+      if (
+        section.dueDate > new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+      ) {
         somedayCount += taskCount;
       }
-      
+
       // Logbook - sections with completed tasks
-      const completedTasks = section.tasks.filter(task => task.isCompleted).length;
+      const completedTasks = section.tasks.filter(
+        (task) => task.isCompleted
+      ).length;
       if (completedTasks > 0) {
         logbookCount += completedTasks;
       }
-      
+
       // Projects - sections that match project names
       if (section.title.toLowerCase().includes("family")) {
         familyCount += taskCount;
@@ -407,12 +418,14 @@ const MainContent: React.FC = () => {
 
   return (
     <div style={{ display: "flex" }}>
-      <div style={{ 
-        width: "280px", 
-        minWidth: "280px",
-        borderRight: "1px solid #E0E0E0",
-        backgroundColor: "#F5F5F5"
-      }}>
+      <div
+        style={{
+          width: "280px",
+          minWidth: "280px",
+          borderRight: "1px solid #E0E0E0",
+          backgroundColor: "#F5F5F5",
+        }}
+      >
         <Sidebar
           selectedSidebar={selectedSidebar}
           setSelectedSidebar={setSelectedSidebar}
@@ -458,13 +471,17 @@ const MainContent: React.FC = () => {
 
             // If "important" tag filter is selected, only show sections with starred tasks
             if (selectedTag === "important") {
-              const hasImportantTasks = section.tasks.some((task) => task.isStarred);
+              const hasImportantTasks = section.tasks.some(
+                (task) => task.isStarred
+              );
               if (!hasImportantTasks) return false;
             }
 
             // If "today" tag filter is selected, only show sections due today
             if (selectedTag === "today") {
-              const sectionDateStr = section.dueDate.toISOString().split("T")[0];
+              const sectionDateStr = section.dueDate
+                .toISOString()
+                .split("T")[0];
               return sectionDateStr === todayStr;
             }
 
@@ -542,12 +559,12 @@ const MainContent: React.FC = () => {
                   ) {
                     return true;
                   }
-                  
+
                   // For inbox and other cases, apply the original today task filtering
                   if (selectedSidebar === "inbox") {
                     return true; // Show all tasks in inbox
                   }
-                  
+
                   return true;
                 })
                 .map((task) => (
@@ -559,9 +576,7 @@ const MainContent: React.FC = () => {
                     onToggleComplete={() =>
                       handleTaskComplete(section.id, task.id)
                     }
-                    onToggleStar={() =>
-                      handleToggleStar(section.id, task.id)
-                    }
+                    onToggleStar={() => handleToggleStar(section.id, task.id)}
                     onTitleChange={(newTitle) =>
                       handleTaskTitleChange(section.id, task.id, newTitle)
                     }
