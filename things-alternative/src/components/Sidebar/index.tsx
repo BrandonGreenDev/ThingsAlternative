@@ -6,25 +6,76 @@ import {
   FiClock,
   FiArchive,
   FiBook,
+  FiPlus,
 } from "react-icons/fi";
 import SidebarSection from "./SidebarSection";
 import SidebarListItem from "./SidebarListItem";
-import { SidebarSelection, SidebarCounts } from "../../context/types";
+import { SidebarSelection, SidebarCounts, Project } from "../../context/types";
 
 const SidebarContainer = styled.div({
   padding: "16px 0",
+});
+
+const AddProjectButton = styled.button({
+  background: "none",
+  border: "none",
+  color: "#999",
+  padding: "8px 16px",
+  cursor: "pointer",
+  fontSize: "12px",
+  display: "flex",
+  alignItems: "center",
+  gap: "4px",
+  width: "100%",
+  textAlign: "left",
+  "&:hover": {
+    color: "#007AFF",
+    background: "#F0F0F0",
+  },
+});
+
+const ProjectNameInput = styled.input({
+  fontSize: "14px",
+  fontWeight: 500,
+  padding: "8px 16px",
+  margin: "0",
+  border: "none",
+  borderBottom: "1px solid #007AFF",
+  outline: "none",
+  width: "calc(100% - 32px)", // Account for padding
+  maxWidth: "100%",
+  background: "transparent",
+  boxSizing: "border-box",
 });
 
 interface SidebarProps {
   selectedSidebar: SidebarSelection;
   setSelectedSidebar: (val: SidebarSelection) => void;
   counts: SidebarCounts;
+  projects: Project[];
+  onAddProject: () => void;
+  newProjectName: string;
+  isAddingProject: boolean;
+  onProjectNameChange: (name: string) => void;
+  onProjectNameSubmit: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  isEditingProjects: boolean;
+  onEditToggle: () => void;
+  onDeleteProject: (projectId: string) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
   selectedSidebar,
   setSelectedSidebar,
   counts,
+  projects,
+  onAddProject,
+  newProjectName,
+  isAddingProject,
+  onProjectNameChange,
+  onProjectNameSubmit,
+  isEditingProjects,
+  onEditToggle,
+  onDeleteProject,
 }) => {
   return (
     <SidebarContainer>
@@ -66,25 +117,38 @@ const Sidebar: React.FC<SidebarProps> = ({
         />
       </SidebarSection>
 
-      <SidebarSection title="Projects">
-        <SidebarListItem
-          text="Family"
-          badge={counts.family > 0 ? counts.family : undefined}
-          selected={selectedSidebar === "family"}
-          onClick={() => setSelectedSidebar("family")}
-        />
-        <SidebarListItem
-          text="Work"
-          badge={counts.work > 0 ? counts.work : undefined}
-          selected={selectedSidebar === "work"}
-          onClick={() => setSelectedSidebar("work")}
-        />
-        <SidebarListItem
-          text="Hobbies"
-          badge={counts.hobbies > 0 ? counts.hobbies : undefined}
-          selected={selectedSidebar === "hobbies"}
-          onClick={() => setSelectedSidebar("hobbies")}
-        />
+      <SidebarSection 
+        title="Projects" 
+        showEditButton={true}
+        isEditMode={isEditingProjects}
+        onEditToggle={onEditToggle}
+      >
+        {projects.map((project) => (
+          <SidebarListItem
+            key={project.id}
+            text={project.name}
+            badge={counts[project.id] > 0 ? counts[project.id] : undefined}
+            selected={selectedSidebar === project.id}
+            onClick={() => setSelectedSidebar(project.id)}
+            showDeleteButton={isEditingProjects}
+            onDelete={() => onDeleteProject(project.id)}
+          />
+        ))}
+        {isAddingProject ? (
+          <ProjectNameInput
+            type="text"
+            value={newProjectName}
+            onChange={(e) => onProjectNameChange(e.target.value)}
+            onKeyDown={onProjectNameSubmit}
+            placeholder="Project Name"
+            autoFocus
+          />
+        ) : (
+          <AddProjectButton onClick={onAddProject}>
+            {FiPlus({ size: 14 })}
+            Add Project
+          </AddProjectButton>
+        )}
       </SidebarSection>
     </SidebarContainer>
   );

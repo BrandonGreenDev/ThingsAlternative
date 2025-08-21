@@ -14,6 +14,14 @@ export interface Section {
   tasks: Task[];
   dueDate: Date;
   dueTime?: string;
+  projectId?: string; // Optional project association
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  color?: string;
+  icon?: string;
 }
 
 export interface TaskCounts {
@@ -28,9 +36,7 @@ export interface SidebarCounts {
   upcoming: number;
   someday: number;
   logbook: number;
-  family: number;
-  work: number;
-  hobbies: number;
+  [projectId: string]: number; // Dynamic project counts
 }
 
 export type SidebarSelection =
@@ -39,8 +45,6 @@ export type SidebarSelection =
   | "upcoming"
   | "someday"
   | "logbook"
-  | "family"
-  | "work"
-  | "hobbies";
+  | string; // Allow dynamic project IDs
 
 export type TagSelection = "all" | "important" | "today";

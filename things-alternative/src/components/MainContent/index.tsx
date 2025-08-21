@@ -40,6 +40,28 @@ const SectionTitleInput = styled.input({
   maxWidth: "300px",
 });
 
+const ProjectSelector = styled.select({
+  fontSize: "14px",
+  padding: "8px",
+  border: "1px solid #ccc",
+  borderRadius: "4px",
+  outline: "none",
+  backgroundColor: "white",
+  marginLeft: "8px",
+  maxWidth: "200px",
+  "&:focus": {
+    borderColor: "#007AFF",
+  },
+});
+
+const SectionInputContainer = styled.div({
+  display: "flex",
+  alignItems: "center",
+  marginBottom: "16px",
+  flexWrap: "wrap",
+  gap: "8px",
+});
+
 const Header = styled.div({
   display: "flex",
   justifyContent: "space-between",
@@ -75,14 +97,23 @@ const MainContent: React.FC = () => {
   // Get everything from our simple Context
   const {
     sections,
+    projects,
     selectedTag,
     selectedSidebar,
     newSectionTitle,
     isAddingSectionTitle,
+    newProjectName,
+    isAddingProject,
+    isEditingProjects,
+    newSectionProjectId,
     setSelectedTag,
     setSelectedSidebar,
     setNewSectionTitle,
     setIsAddingSectionTitle,
+    setNewProjectName,
+    setIsAddingProject,
+    setIsEditingProjects,
+    setNewSectionProjectId,
     addSection,
     addTask,
     toggleTaskComplete,
@@ -92,6 +123,8 @@ const MainContent: React.FC = () => {
     updateTaskTime,
     updateSectionDate,
     updateSectionTime,
+    addProject,
+    deleteProject,
   } = useAppContext();
 
   const handleAddSection = () => {
@@ -106,6 +139,35 @@ const MainContent: React.FC = () => {
     } else if (e.key === "Escape") {
       setNewSectionTitle("");
       setIsAddingSectionTitle(false);
+    }
+  };
+
+  const handleAddProject = () => {
+    setIsAddingProject(true);
+  };
+
+  const handleProjectNameSubmit = (
+    e: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (e.key === "Enter" && newProjectName.trim()) {
+      addProject(newProjectName);
+    } else if (e.key === "Escape") {
+      setNewProjectName("");
+      setIsAddingProject(false);
+    }
+  };
+
+  const handleEditToggle = () => {
+    setIsEditingProjects(!isEditingProjects);
+  };
+
+  const handleDeleteProject = (projectId: string) => {
+    if (window.confirm("Are you sure you want to delete this project?")) {
+      deleteProject(projectId);
+      // If we're viewing the deleted project, switch to inbox
+      if (selectedSidebar === projectId) {
+        setSelectedSidebar("inbox");
+      }
     }
   };
 
@@ -212,9 +274,12 @@ const MainContent: React.FC = () => {
     let upcomingCount = 0;
     let somedayCount = 0;
     let logbookCount = 0;
-    let familyCount = 0;
-    let workCount = 0;
-    let hobbiesCount = 0;
+
+    // Initialize project counts
+    const projectCounts: { [projectId: string]: number } = {};
+    projects.forEach((project) => {
+      projectCounts[project.id] = 0;
+    });
 
     sections.forEach((section) => {
       section.tasks.forEach((task) => {
@@ -244,15 +309,9 @@ const MainContent: React.FC = () => {
           logbookCount++;
         }
 
-        // Projects - tasks in sections that match project names
-        if (section.title.toLowerCase().includes("family")) {
-          familyCount++;
-        }
-        if (section.title.toLowerCase().includes("work")) {
-          workCount++;
-        }
-        if (section.title.toLowerCase().includes("hobbies")) {
-          hobbiesCount++;
+        // Project counts - count tasks in sections assigned to projects
+        if (section.projectId && projectCounts.hasOwnProperty(section.projectId)) {
+          projectCounts[section.projectId]++;
         }
       });
     });
@@ -263,9 +322,7 @@ const MainContent: React.FC = () => {
       upcoming: upcomingCount,
       someday: somedayCount,
       logbook: logbookCount,
-      family: familyCount,
-      work: workCount,
-      hobbies: hobbiesCount,
+      ...projectCounts,
     };
   };
 
@@ -286,6 +343,15 @@ const MainContent: React.FC = () => {
           selectedSidebar={selectedSidebar}
           setSelectedSidebar={setSelectedSidebar}
           counts={sidebarCounts}
+          projects={projects}
+          onAddProject={handleAddProject}
+          newProjectName={newProjectName}
+          isAddingProject={isAddingProject}
+          onProjectNameChange={setNewProjectName}
+          onProjectNameSubmit={handleProjectNameSubmit}
+          isEditingProjects={isEditingProjects}
+          onEditToggle={handleEditToggle}
+          onDeleteProject={handleDeleteProject}
         />
       </div>
       <Container>
@@ -371,9 +437,12 @@ const MainContent: React.FC = () => {
               case "logbook":
                 return section.tasks.some((task) => task.isCompleted);
               default:
-                return section.title
-                  .toLowerCase()
-                  .includes(selectedSidebar.toLowerCase());
+                // Handle dynamic project selection
+                const selectedProject = projects.find(p => p.id === selectedSidebar);
+                if (selectedProject) {
+                  return section.projectId === selectedProject.id;
+                }
+                return false;
             }
           })
           .map((section) => (
@@ -411,12 +480,11 @@ const MainContent: React.FC = () => {
                   if (selectedSidebar === "logbook") {
                     return task.isCompleted;
                   }
-                  if (
-                    ["family", "work", "hobbies"].includes(
-                      selectedSidebar.toLowerCase()
-                    )
-                  ) {
-                    return true;
+                  
+                  // Handle dynamic project selection
+                  const selectedProject = projects.find(p => p.id === selectedSidebar);
+                  if (selectedProject) {
+                    return true; // Already filtered at section level
                   }
 
                   // For inbox and other cases
@@ -456,14 +524,27 @@ const MainContent: React.FC = () => {
           ))}
 
         {isAddingSectionTitle ? (
-          <SectionTitleInput
-            type="text"
-            value={newSectionTitle}
-            onChange={(e) => setNewSectionTitle(e.target.value)}
-            onKeyDown={handleSectionTitleSubmit}
-            placeholder="Section Title"
-            autoFocus
-          />
+          <SectionInputContainer>
+            <SectionTitleInput
+              type="text"
+              value={newSectionTitle}
+              onChange={(e) => setNewSectionTitle(e.target.value)}
+              onKeyDown={handleSectionTitleSubmit}
+              placeholder="Section Title"
+              autoFocus
+            />
+            <ProjectSelector
+              value={newSectionProjectId || ""}
+              onChange={(e) => setNewSectionProjectId(e.target.value || undefined)}
+            >
+              <option value="">No Project</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </ProjectSelector>
+          </SectionInputContainer>
         ) : (
           <AddButton onClick={handleAddSection}>+ Add Section</AddButton>
         )}
