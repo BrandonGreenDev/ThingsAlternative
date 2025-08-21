@@ -9,13 +9,24 @@ interface TaskSectionProps {
   defaultExpanded?: boolean;
   dueDate: Date;
   dueTime?: string;
+  isCompleted?: boolean;
   onDateChange: (newDate: Date) => void;
   onTimeChange?: (newTime: string | undefined) => void;
+  onToggleComplete?: () => void;
 }
 
-const SectionContainer = styled.div({
-  marginBottom: "24px",
-});
+const SectionContainer = styled.div<{ isCompleted?: boolean }>(
+  {
+    marginBottom: "24px",
+    transition: "opacity 0.2s ease",
+  },
+  (props) => ({
+    opacity: props.isCompleted ? 0.6 : 1,
+    backgroundColor: props.isCompleted ? "#f9f9f9" : "transparent",
+    borderRadius: props.isCompleted ? "8px" : "0",
+    padding: props.isCompleted ? "12px" : "0",
+  })
+);
 
 const SectionHeader = styled.div({
   display: "flex",
@@ -31,6 +42,12 @@ const TitleSection = styled.div({
   "&:hover": {
     color: "#007AFF",
   },
+});
+
+const CompletionCheckbox = styled.input({
+  marginRight: "8px",
+  cursor: "pointer",
+  accentColor: "#007AFF",
 });
 
 const DateInput = styled.input({
@@ -124,13 +141,19 @@ const TimePickerWrapper = styled.div({
   },
 });
 
-const SectionTitle = styled.h2({
-  fontSize: "15px",
-  fontWeight: 600,
-  color: "inherit",
-  margin: 0,
-  marginLeft: "8px",
-});
+const SectionTitle = styled.h2<{ isCompleted?: boolean }>(
+  {
+    fontSize: "15px",
+    fontWeight: 600,
+    color: "inherit",
+    margin: 0,
+    marginLeft: "8px",
+    transition: "text-decoration 0.2s ease",
+  },
+  (props) => ({
+    textDecoration: props.isCompleted ? "line-through" : "none",
+  })
+);
 
 const TaskList = styled.div({
   marginLeft: "24px",
@@ -142,8 +165,10 @@ const TaskSection: React.FC<TaskSectionProps> = ({
   defaultExpanded = true,
   dueDate,
   dueTime,
+  isCompleted = false,
   onDateChange,
   onTimeChange,
+  onToggleComplete,
 }) => {
   const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
   const formattedDate = dueDate
@@ -159,14 +184,25 @@ const TaskSection: React.FC<TaskSectionProps> = ({
     onTimeChange?.(value);
   };
 
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    onToggleComplete?.();
+  };
+
   return (
-    <SectionContainer>
+    <SectionContainer isCompleted={isCompleted}>
       <SectionHeader>
         <TitleSection onClick={() => setIsExpanded(!isExpanded)}>
+          <CompletionCheckbox
+            type="checkbox"
+            checked={isCompleted}
+            onChange={handleCheckboxChange}
+            onClick={(e) => e.stopPropagation()}
+          />
           {isExpanded
             ? FiChevronDown({ size: 20 })
             : FiChevronRight({ size: 20 })}
-          <SectionTitle>{title}</SectionTitle>
+          <SectionTitle isCompleted={isCompleted}>{title}</SectionTitle>
         </TitleSection>
         <div
           style={{

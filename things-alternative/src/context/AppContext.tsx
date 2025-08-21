@@ -6,6 +6,8 @@ import React, {
   ReactNode,
 } from "react";
 import { Section, Task, Project, SidebarSelection, TagSelection } from "./types";
+import { useConfirmation } from "../hooks/useConfirmation";
+import ConfirmationWidget from "../components/common/ConfirmationWidget";
 
 interface AppContextType {
   // State
@@ -50,12 +52,21 @@ interface AppContextType {
   ) => void;
   updateSectionDate: (sectionId: string, newDate: Date) => void;
   updateSectionTime: (sectionId: string, newTime: string | undefined) => void;
+  toggleSectionComplete: (sectionId: string) => void;
 
   // Project operations
   addProject: (name: string) => void;
   updateProject: (projectId: string, updates: Partial<Project>) => void;
   deleteProject: (projectId: string) => void;
   assignSectionToProject: (sectionId: string, projectId: string | undefined) => void;
+  
+  // Confirmation operations
+  showConfirmation: (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    options?: { confirmText?: string; cancelText?: string }
+  ) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -132,6 +143,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [isAddingProject, setIsAddingProject] = useState(false);
   const [isEditingProjects, setIsEditingProjects] = useState(false);
 
+  // Confirmation hook
+  const { confirmation, showConfirmation, hideConfirmation, handleConfirm } = useConfirmation();
+
   // Save to localStorage whenever sections change
   useEffect(() => {
     localStorage.setItem("things_sections", JSON.stringify(sections));
@@ -184,18 +198,42 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const toggleTaskComplete = (sectionId: string, taskId: string) => {
     setSections((prev) =>
-      prev.map((section) =>
-        section.id === sectionId
-          ? {
-              ...section,
-              tasks: section.tasks.map((task) =>
-                task.id === taskId
-                  ? { ...task, isCompleted: !task.isCompleted }
-                  : task
-              ),
-            }
-          : section
-      )
+      prev.map((section) => {
+        if (section.id === sectionId) {
+          const updatedTasks = section.tasks.map((task) =>
+            task.id === taskId
+              ? { ...task, isCompleted: !task.isCompleted }
+              : task
+          );
+          
+          const updatedSection = { ...section, tasks: updatedTasks };
+          
+          // Check if all tasks are now completed and section is not completed
+          const allTasksCompleted = updatedTasks.every(task => task.isCompleted);
+          const hasTasksToComplete = updatedTasks.length > 0;
+          
+          if (allTasksCompleted && hasTasksToComplete && !section.isCompleted) {
+            showConfirmation(
+              "All Tasks Complete!",
+              "Mark section as done?",
+              () => {
+                setSections((prev) =>
+                  prev.map((s) =>
+                    s.id === sectionId ? { ...s, isCompleted: true } : s
+                  )
+                );
+              },
+              {
+                confirmText: "Mark Done",
+                cancelText: "Keep Open"
+              }
+            );
+          }
+          
+          return updatedSection;
+        }
+        return section;
+      })
     );
   };
 
@@ -292,6 +330,47 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     );
   };
 
+  const toggleSectionComplete = (sectionId: string) => {
+    setSections((prev) =>
+      prev.map((section) => {
+        if (section.id === sectionId) {
+          const newCompletionState = !section.isCompleted;
+          
+          // If marking section as complete and there are incomplete tasks, ask user
+          if (newCompletionState && section.tasks.some(task => !task.isCompleted)) {
+            showConfirmation(
+              "Complete Section",
+              "Complete all tasks in this section?",
+              () => {
+                setSections((prev) =>
+                  prev.map((s) =>
+                    s.id === sectionId
+                      ? {
+                          ...s,
+                          isCompleted: true,
+                          tasks: s.tasks.map(task => ({ ...task, isCompleted: true }))
+                        }
+                      : s
+                  )
+                );
+              },
+              {
+                confirmText: "Complete All",
+                cancelText: "Section Only"
+              }
+            );
+            
+            // For now, just complete the section without tasks if user cancels
+            return { ...section, isCompleted: newCompletionState };
+          }
+          
+          return { ...section, isCompleted: newCompletionState };
+        }
+        return section;
+      })
+    );
+  };
+
   // Project operations
   const addProject = (name: string) => {
     const newProject: Project = {
@@ -370,13 +449,30 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     updateTaskTime,
     updateSectionDate,
     updateSectionTime,
+    toggleSectionComplete,
 
     // Project operations
     addProject,
     updateProject,
     deleteProject,
     assignSectionToProject,
+    
+    // Confirmation operations
+    showConfirmation,
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={value}>
+      {children}
+      <ConfirmationWidget
+        isVisible={confirmation.isVisible}
+        title={confirmation.title}
+        message={confirmation.message}
+        confirmText={confirmation.confirmText}
+        cancelText={confirmation.cancelText}
+        onConfirm={handleConfirm}
+        onCancel={hideConfirmation}
+      />
+    </AppContext.Provider>
+  );
 };

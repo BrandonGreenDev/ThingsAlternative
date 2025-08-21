@@ -123,8 +123,10 @@ const MainContent: React.FC = () => {
     updateTaskTime,
     updateSectionDate,
     updateSectionTime,
+    toggleSectionComplete,
     addProject,
     deleteProject,
+    showConfirmation,
   } = useAppContext();
 
   const handleAddSection = () => {
@@ -162,13 +164,21 @@ const MainContent: React.FC = () => {
   };
 
   const handleDeleteProject = (projectId: string) => {
-    if (window.confirm("Are you sure you want to delete this project?")) {
-      deleteProject(projectId);
-      // If we're viewing the deleted project, switch to inbox
-      if (selectedSidebar === projectId) {
-        setSelectedSidebar("inbox");
+    showConfirmation(
+      "Delete Project",
+      "Are you sure you want to delete this project? Sections will be unassigned but not deleted.",
+      () => {
+        deleteProject(projectId);
+        // If we're viewing the deleted project, switch to inbox
+        if (selectedSidebar === projectId) {
+          setSelectedSidebar("inbox");
+        }
+      },
+      {
+        confirmText: "Delete",
+        cancelText: "Cancel"
       }
-    }
+    );
   };
 
   // Helper function to get effective date for a task (task date overrides section date)
@@ -222,7 +232,7 @@ const MainContent: React.FC = () => {
           return section.dueDate > somedayThreshold || hasSomedayTasks;
         }
         case "logbook":
-          return section.tasks.some((task) => task.isCompleted);
+          return section.isCompleted || section.tasks.some((task) => task.isCompleted);
         default:
           return section.title
             .toLowerCase()
@@ -282,6 +292,11 @@ const MainContent: React.FC = () => {
     });
 
     sections.forEach((section) => {
+      // Count completed sections in logbook
+      if (section.isCompleted) {
+        logbookCount++;
+      }
+      
       section.tasks.forEach((task) => {
         const effectiveDate = getEffectiveTaskDate(task, section);
         const effectiveDateStr = effectiveDate.toISOString().split("T")[0];
@@ -435,7 +450,7 @@ const MainContent: React.FC = () => {
                 return section.dueDate > somedayThreshold || hasSomedayTasks;
               }
               case "logbook":
-                return section.tasks.some((task) => task.isCompleted);
+                return section.isCompleted || section.tasks.some((task) => task.isCompleted);
               default:
                 // Handle dynamic project selection
                 const selectedProject = projects.find(p => p.id === selectedSidebar);
@@ -451,8 +466,10 @@ const MainContent: React.FC = () => {
               title={section.title}
               dueDate={section.dueDate}
               dueTime={section.dueTime}
+              isCompleted={section.isCompleted}
               onDateChange={(newDate) => updateSectionDate(section.id, newDate)}
               onTimeChange={(newTime) => updateSectionTime(section.id, newTime)}
+              onToggleComplete={() => toggleSectionComplete(section.id)}
             >
               {section.tasks
                 .filter((task) => {

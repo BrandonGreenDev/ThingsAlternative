@@ -15,6 +15,7 @@ export interface Section {
   dueDate: Date;
   dueTime?: string;
   projectId?: string; // Optional project association
+  isCompleted?: boolean; // Optional completion state
 }
 
 export interface Project {
