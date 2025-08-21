@@ -1,6 +1,6 @@
 import React from "react";
 import styled from "@emotion/styled";
-import { FiChevronDown, FiChevronRight } from "react-icons/fi";
+import { FiChevronDown, FiChevronRight, FiMoreHorizontal } from "react-icons/fi";
 import TimePicker from "react-time-picker";
 
 interface TaskSectionProps {
@@ -13,6 +13,10 @@ interface TaskSectionProps {
   onDateChange: (newDate: Date) => void;
   onTimeChange?: (newTime: string | undefined) => void;
   onToggleComplete?: () => void;
+  // Section reassignment props
+  projects?: Array<{ id: string; name: string }>;
+  currentProjectId?: string;
+  onMoveToProject?: (projectId: string | undefined) => void;
 }
 
 const SectionContainer = styled.div<{ isCompleted?: boolean }>(
@@ -159,6 +163,64 @@ const TaskList = styled.div({
   marginLeft: "24px",
 });
 
+const ActionButton = styled.button({
+  background: "none",
+  border: "none",
+  color: "#666",
+  cursor: "pointer",
+  padding: "4px",
+  borderRadius: "4px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  transition: "all 0.2s",
+  "&:hover": {
+    backgroundColor: "#f0f0f0",
+    color: "#333",
+  },
+});
+
+const ActionContainer = styled.div({
+  position: "relative",
+});
+
+const DropdownMenu = styled.div({
+  position: "absolute",
+  top: "100%",
+  right: "0",
+  background: "white",
+  border: "1px solid #ddd",
+  borderRadius: "8px",
+  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+  zIndex: 1000,
+  minWidth: "180px",
+  padding: "8px 0",
+});
+
+const DropdownItem = styled.button({
+  width: "100%",
+  background: "none",
+  border: "none",
+  padding: "8px 16px",
+  textAlign: "left",
+  cursor: "pointer",
+  color: "#333",
+  fontSize: "14px",
+  "&:hover": {
+    backgroundColor: "#f5f5f5",
+  },
+  "&:disabled": {
+    color: "#999",
+    cursor: "not-allowed",
+  },
+});
+
+const DropdownDivider = styled.div({
+  height: "1px",
+  backgroundColor: "#eee",
+  margin: "4px 0",
+});
+
 const TaskSection: React.FC<TaskSectionProps> = ({
   title,
   children,
@@ -169,8 +231,28 @@ const TaskSection: React.FC<TaskSectionProps> = ({
   onDateChange,
   onTimeChange,
   onToggleComplete,
+  projects = [],
+  currentProjectId,
+  onMoveToProject,
 }) => {
   const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
+  const [showDropdown, setShowDropdown] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showDropdown]);
+  
   const formattedDate = dueDate
     ? new Date(dueDate).toISOString().split("T")[0]
     : "";
@@ -239,6 +321,57 @@ const TaskSection: React.FC<TaskSectionProps> = ({
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
             />
           </TimePickerWrapper>
+          {projects.length > 1 && onMoveToProject && (
+            <ActionContainer ref={dropdownRef}>
+              <ActionButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDropdown(!showDropdown);
+                }}
+              >
+                {FiMoreHorizontal({ size: 16 })}
+              </ActionButton>
+              {showDropdown && (
+                <DropdownMenu>
+                  <DropdownItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDropdown(false);
+                    }}
+                    disabled
+                  >
+                    Move to Project:
+                  </DropdownItem>
+                  <DropdownDivider />
+                  {projects
+                    .filter((project) => project.id !== currentProjectId)
+                    .map((project) => (
+                      <DropdownItem
+                        key={project.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMoveToProject(project.id);
+                          setShowDropdown(false);
+                        }}
+                      >
+                        {project.name}
+                      </DropdownItem>
+                    ))}
+                  {projects.find((p) => p.id === currentProjectId) && (
+                    <DropdownItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMoveToProject(undefined);
+                        setShowDropdown(false);
+                      }}
+                    >
+                      Remove from Project
+                    </DropdownItem>
+                  )}
+                </DropdownMenu>
+              )}
+            </ActionContainer>
+          )}
         </div>
       </SectionHeader>
       {isExpanded && <TaskList>{children}</TaskList>}

@@ -1,6 +1,6 @@
 import React from "react";
 import styled from "@emotion/styled";
-import { FiCircle, FiCheckCircle, FiStar } from "react-icons/fi";
+import { FiCircle, FiCheckCircle, FiStar, FiMoreHorizontal } from "react-icons/fi";
 import TimePicker from "react-time-picker";
 
 interface TaskItemProps {
@@ -15,16 +15,18 @@ interface TaskItemProps {
   onTitleChange?: (newTitle: string) => void;
   onDateChange?: (newDate: Date) => void;
   onTimeChange?: (newTime: string | undefined) => void;
+  // Task reassignment props
+  sections?: Array<{ id: string; title: string }>;
+  currentSectionId?: string;
+  onMoveToSection?: (sectionId: string) => void;
 }
 
 const Container = styled.div({
   display: "flex",
   alignItems: "flex-start",
   padding: "8px 0",
-  "&:hover": {
-    "& .task-actions": {
-      opacity: 1,
-    },
+  "&:hover .task-actions": {
+    opacity: 1,
   },
 });
 
@@ -70,6 +72,66 @@ const Actions = styled.div({
   display: "flex",
   alignItems: "center",
   gap: "8px",
+  opacity: 0,
+  transition: "opacity 0.2s ease",
+});
+
+const ActionButton = styled.button({
+  background: "none",
+  border: "none",
+  padding: "4px",
+  cursor: "pointer",
+  color: "#999",
+  display: "flex",
+  alignItems: "center",
+  borderRadius: "4px",
+  "&:hover": {
+    color: "#007AFF",
+    background: "#F0F0F0",
+  },
+});
+
+const DropdownContainer = styled.div({
+  position: "relative",
+  display: "inline-block",
+});
+
+const DropdownMenu = styled.div<{ isVisible: boolean }>({
+  position: "absolute",
+  right: 0,
+  top: "100%",
+  backgroundColor: "white",
+  border: "1px solid #E0E0E0",
+  borderRadius: "8px",
+  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+  minWidth: "160px",
+  zIndex: 1000,
+  maxHeight: "200px",
+  overflowY: "auto",
+}, (props) => ({
+  display: props.isVisible ? "block" : "none",
+}));
+
+const DropdownItem = styled.button({
+  width: "100%",
+  padding: "8px 12px",
+  border: "none",
+  background: "none",
+  textAlign: "left",
+  fontSize: "14px",
+  color: "#333",
+  cursor: "pointer",
+  "&:hover": {
+    backgroundColor: "#F0F0F0",
+  },
+  "&:first-of-type": {
+    borderTopLeftRadius: "8px",
+    borderTopRightRadius: "8px",
+  },
+  "&:last-of-type": {
+    borderBottomLeftRadius: "8px",
+    borderBottomRightRadius: "8px",
+  },
 });
 
 const DateTimeContainer = styled.div({
@@ -193,7 +255,28 @@ const TaskItem: React.FC<TaskItemProps> = ({
   onTitleChange,
   onDateChange,
   onTimeChange,
+  sections = [],
+  currentSectionId,
+  onMoveToSection,
 }) => {
+  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
+  const [isHovered, setIsHovered] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isDropdownOpen]);
+  
   const formatDateForInput = (date: Date) => {
     return date.toISOString().split("T")[0];
   };
@@ -208,7 +291,10 @@ const TaskItem: React.FC<TaskItemProps> = ({
   };
 
   return (
-    <Container>
+    <Container
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <Checkbox onClick={onToggleComplete}>
         {isCompleted ? FiCheckCircle({ size: 20 }) : FiCircle({ size: 20 })}
       </Checkbox>
@@ -241,10 +327,35 @@ const TaskItem: React.FC<TaskItemProps> = ({
           </DateTimeContainer>
         )}
       </Content>
-      <Actions className="task-actions">
+      <Actions className="task-actions" style={{ opacity: (isHovered || isDropdownOpen) ? 1 : 0 }}>
         <StarButton isStarred={isStarred} onClick={onToggleStar}>
           {FiStar({ size: 16 })}
         </StarButton>
+        {sections.length > 1 && onMoveToSection && (
+          <DropdownContainer ref={dropdownRef}>
+            <ActionButton
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              title="Move to section"
+            >
+              {FiMoreHorizontal({ size: 16 })}
+            </ActionButton>
+            <DropdownMenu isVisible={isDropdownOpen}>
+              {sections
+                .filter(section => section.id !== currentSectionId)
+                .map(section => (
+                  <DropdownItem
+                    key={section.id}
+                    onClick={() => {
+                      onMoveToSection(section.id);
+                      setIsDropdownOpen(false);
+                    }}
+                  >
+                    Move to {section.title}
+                  </DropdownItem>
+                ))}
+            </DropdownMenu>
+          </DropdownContainer>
+        )}
       </Actions>
     </Container>
   );

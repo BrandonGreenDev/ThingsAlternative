@@ -53,6 +53,8 @@ interface AppContextType {
   updateSectionDate: (sectionId: string, newDate: Date) => void;
   updateSectionTime: (sectionId: string, newTime: string | undefined) => void;
   toggleSectionComplete: (sectionId: string) => void;
+  moveTaskToSection: (taskId: string, fromSectionId: string, toSectionId: string) => void;
+  moveSectionToProject: (sectionId: string, projectId: string | undefined) => void;
 
   // Project operations
   addProject: (name: string) => void;
@@ -371,6 +373,53 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     );
   };
 
+  const moveTaskToSection = (taskId: string, fromSectionId: string, toSectionId: string) => {
+    setSections((prev) => {
+      // Find the task to move
+      let taskToMove: Task | null = null;
+      
+      // Remove task from source section and find the task
+      const updatedSections = prev.map((section) => {
+        if (section.id === fromSectionId) {
+          const taskIndex = section.tasks.findIndex(task => task.id === taskId);
+          if (taskIndex !== -1) {
+            taskToMove = section.tasks[taskIndex];
+            return {
+              ...section,
+              tasks: section.tasks.filter(task => task.id !== taskId)
+            };
+          }
+        }
+        return section;
+      });
+      
+      // Add task to destination section
+      if (taskToMove) {
+        return updatedSections.map((section) => {
+          if (section.id === toSectionId) {
+            return {
+              ...section,
+              tasks: [...section.tasks, taskToMove as Task]
+            };
+          }
+          return section;
+        });
+      }
+      
+      return updatedSections;
+    });
+  };
+
+  const moveSectionToProject = (sectionId: string, projectId: string | undefined) => {
+    setSections((prev) =>
+      prev.map((section) =>
+        section.id === sectionId
+          ? { ...section, projectId }
+          : section
+      )
+    );
+  };
+
   // Project operations
   const addProject = (name: string) => {
     const newProject: Project = {
@@ -450,6 +499,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     updateSectionDate,
     updateSectionTime,
     toggleSectionComplete,
+    moveTaskToSection,
+    moveSectionToProject,
 
     // Project operations
     addProject,

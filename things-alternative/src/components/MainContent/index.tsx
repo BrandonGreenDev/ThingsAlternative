@@ -124,6 +124,8 @@ const MainContent: React.FC = () => {
     updateSectionDate,
     updateSectionTime,
     toggleSectionComplete,
+    moveTaskToSection,
+    moveSectionToProject,
     addProject,
     deleteProject,
     showConfirmation,
@@ -470,6 +472,9 @@ const MainContent: React.FC = () => {
               onDateChange={(newDate) => updateSectionDate(section.id, newDate)}
               onTimeChange={(newTime) => updateSectionTime(section.id, newTime)}
               onToggleComplete={() => toggleSectionComplete(section.id)}
+              projects={projects}
+              currentProjectId={section.projectId}
+              onMoveToProject={(projectId) => moveSectionToProject(section.id, projectId)}
             >
               {section.tasks
                 .filter((task) => {
@@ -531,6 +536,11 @@ const MainContent: React.FC = () => {
                     }
                     onTimeChange={(newTime) =>
                       updateTaskTime(section.id, task.id, newTime)
+                    }
+                    sections={sections.map(s => ({ id: s.id, title: s.title }))}
+                    currentSectionId={section.id}
+                    onMoveToSection={(toSectionId) =>
+                      moveTaskToSection(task.id, section.id, toSectionId)
                     }
                   />
                 ))}
