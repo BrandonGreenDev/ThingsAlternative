@@ -7,6 +7,7 @@ import Sidebar from "../Sidebar";
 import type { IconType } from "react-icons";
 import { FiMoreHorizontal } from "react-icons/fi";
 import { useAppContext } from "../../context/AppContext";
+import { Task, Section } from "../../context/types";
 
 const MoreHorizontal = FiMoreHorizontal as IconType;
 
@@ -87,6 +88,8 @@ const MainContent: React.FC = () => {
     toggleTaskComplete,
     toggleTaskStar,
     updateTaskTitle,
+    updateTaskDate,
+    updateTaskTime,
     updateSectionDate,
     updateSectionTime,
   } = useAppContext();
@@ -104,6 +107,11 @@ const MainContent: React.FC = () => {
       setNewSectionTitle("");
       setIsAddingSectionTitle(false);
     }
+  };
+
+  // Helper function to get effective date for a task (task date overrides section date)
+  const getEffectiveTaskDate = (task: Task, section: Section): Date => {
+    return task.dueDate || section.dueDate;
   };
 
   // Calculate task counts for filter tags
@@ -126,16 +134,31 @@ const MainContent: React.FC = () => {
         case "inbox":
           return true;
         case "today": {
+          // Check if section or any of its tasks are due today
           const sectionDateStr = section.dueDate.toISOString().split("T")[0];
-          return sectionDateStr === todayStr;
+          const hasTasksDueToday = section.tasks.some((task) => {
+            const effectiveDate = getEffectiveTaskDate(task, section);
+            const taskDateStr = effectiveDate.toISOString().split("T")[0];
+            return taskDateStr === todayStr;
+          });
+          return sectionDateStr === todayStr || hasTasksDueToday;
         }
-        case "upcoming":
-          return section.dueDate > today;
-        case "someday":
-          return (
-            section.dueDate >
-            new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
-          );
+        case "upcoming": {
+          // Check if section or any of its tasks are due in the future
+          const hasUpcomingTasks = section.tasks.some((task) => {
+            const effectiveDate = getEffectiveTaskDate(task, section);
+            return effectiveDate > today;
+          });
+          return section.dueDate > today || hasUpcomingTasks;
+        }
+        case "someday": {
+          const somedayThreshold = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+          const hasSomedayTasks = section.tasks.some((task) => {
+            const effectiveDate = getEffectiveTaskDate(task, section);
+            return effectiveDate > somedayThreshold;
+          });
+          return section.dueDate > somedayThreshold || hasSomedayTasks;
+        }
         case "logbook":
           return section.tasks.some((task) => task.isCompleted);
         default:
@@ -147,12 +170,12 @@ const MainContent: React.FC = () => {
 
     // Count tasks within the filtered sections
     filteredSections.forEach((section) => {
-      const sectionDateStr = section.dueDate.toISOString().split("T")[0];
-
       section.tasks.forEach((task) => {
+        const effectiveDate = getEffectiveTaskDate(task, section);
+        const effectiveDateStr = effectiveDate.toISOString().split("T")[0];
         let includeTask = true;
 
-        if (selectedSidebar === "upcoming" && task.dueDate <= today) {
+        if (selectedSidebar === "upcoming" && effectiveDate <= today) {
           includeTask = false;
         }
         if (selectedSidebar === "logbook" && !task.isCompleted) {
@@ -164,7 +187,7 @@ const MainContent: React.FC = () => {
           if (task.isStarred) {
             importantTasksCount++;
           }
-          if (sectionDateStr === todayStr) {
+          if (effectiveDateStr === todayStr) {
             todayTasksCount++;
           }
         }
@@ -182,6 +205,7 @@ const MainContent: React.FC = () => {
   const getSidebarCounts = () => {
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
+    const somedayThreshold = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     let inboxCount = 0;
     let todayCount = 0;
@@ -193,47 +217,44 @@ const MainContent: React.FC = () => {
     let hobbiesCount = 0;
 
     sections.forEach((section) => {
-      const sectionDateStr = section.dueDate.toISOString().split("T")[0];
-      const taskCount = section.tasks.length;
+      section.tasks.forEach((task) => {
+        const effectiveDate = getEffectiveTaskDate(task, section);
+        const effectiveDateStr = effectiveDate.toISOString().split("T")[0];
 
-      // Inbox shows all sections
-      inboxCount += taskCount;
+        // Inbox shows all tasks
+        inboxCount++;
 
-      // Today - sections due today
-      if (sectionDateStr === todayStr) {
-        todayCount += taskCount;
-      }
+        // Today - tasks due today (using effective date)
+        if (effectiveDateStr === todayStr) {
+          todayCount++;
+        }
 
-      // Upcoming - sections due in the future
-      if (section.dueDate > today) {
-        upcomingCount += taskCount;
-      }
+        // Upcoming - tasks due in the future
+        if (effectiveDate > today) {
+          upcomingCount++;
+        }
 
-      // Someday - sections due more than 7 days from now
-      if (
-        section.dueDate > new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
-      ) {
-        somedayCount += taskCount;
-      }
+        // Someday - tasks due more than 7 days from now
+        if (effectiveDate > somedayThreshold) {
+          somedayCount++;
+        }
 
-      // Logbook - sections with completed tasks
-      const completedTasks = section.tasks.filter(
-        (task) => task.isCompleted
-      ).length;
-      if (completedTasks > 0) {
-        logbookCount += completedTasks;
-      }
+        // Logbook - completed tasks
+        if (task.isCompleted) {
+          logbookCount++;
+        }
 
-      // Projects - sections that match project names
-      if (section.title.toLowerCase().includes("family")) {
-        familyCount += taskCount;
-      }
-      if (section.title.toLowerCase().includes("work")) {
-        workCount += taskCount;
-      }
-      if (section.title.toLowerCase().includes("hobbies")) {
-        hobbiesCount += taskCount;
-      }
+        // Projects - tasks in sections that match project names
+        if (section.title.toLowerCase().includes("family")) {
+          familyCount++;
+        }
+        if (section.title.toLowerCase().includes("work")) {
+          workCount++;
+        }
+        if (section.title.toLowerCase().includes("hobbies")) {
+          hobbiesCount++;
+        }
+      });
     });
 
     return {
@@ -309,28 +330,44 @@ const MainContent: React.FC = () => {
             }
 
             if (selectedTag === "today") {
-              const sectionDateStr = section.dueDate
-                .toISOString()
-                .split("T")[0];
-              return sectionDateStr === todayStr;
+              // Show section if it has any tasks due today
+              const hasTodayTasks = section.tasks.some((task) => {
+                const effectiveDate = getEffectiveTaskDate(task, section);
+                const effectiveDateStr = effectiveDate.toISOString().split("T")[0];
+                return effectiveDateStr === todayStr;
+              });
+              return hasTodayTasks;
             }
 
             switch (selectedSidebar) {
               case "inbox":
                 return true;
               case "today": {
-                const sectionDateStr = section.dueDate
-                  .toISOString()
-                  .split("T")[0];
-                return sectionDateStr === todayStr;
+                // Show section if it or any of its tasks are due today
+                const sectionDateStr = section.dueDate.toISOString().split("T")[0];
+                const hasTodayTasks = section.tasks.some((task) => {
+                  const effectiveDate = getEffectiveTaskDate(task, section);
+                  const effectiveDateStr = effectiveDate.toISOString().split("T")[0];
+                  return effectiveDateStr === todayStr;
+                });
+                return sectionDateStr === todayStr || hasTodayTasks;
               }
-              case "upcoming":
-                return section.dueDate > today;
-              case "someday":
-                return (
-                  section.dueDate >
-                  new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
-                );
+              case "upcoming": {
+                // Show section if it or any of its tasks are due in the future
+                const hasUpcomingTasks = section.tasks.some((task) => {
+                  const effectiveDate = getEffectiveTaskDate(task, section);
+                  return effectiveDate > today;
+                });
+                return section.dueDate > today || hasUpcomingTasks;
+              }
+              case "someday": {
+                const somedayThreshold = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+                const hasSomedayTasks = section.tasks.some((task) => {
+                  const effectiveDate = getEffectiveTaskDate(task, section);
+                  return effectiveDate > somedayThreshold;
+                });
+                return section.dueDate > somedayThreshold || hasSomedayTasks;
+              }
               case "logbook":
                 return section.tasks.some((task) => task.isCompleted);
               default:
@@ -352,23 +389,24 @@ const MainContent: React.FC = () => {
                 .filter((task) => {
                   const today = new Date();
                   const todayStr = today.toISOString().split("T")[0];
-                  const taskDateStr = task.dueDate.toISOString().split("T")[0];
+                  const effectiveDate = getEffectiveTaskDate(task, section);
+                  const effectiveDateStr = effectiveDate.toISOString().split("T")[0];
 
                   if (selectedTag === "important" && !task.isStarred) {
                     return false;
                   }
                   if (selectedTag === "today") {
-                    return taskDateStr === todayStr;
+                    return effectiveDateStr === todayStr;
                   }
                   if (selectedTag === "all") {
                     return true;
                   }
 
                   if (selectedSidebar === "today") {
-                    return true;
+                    return true; // Already filtered at section level
                   }
                   if (selectedSidebar === "upcoming") {
-                    return task.dueDate > today;
+                    return effectiveDate > today;
                   }
                   if (selectedSidebar === "logbook") {
                     return task.isCompleted;
@@ -381,7 +419,7 @@ const MainContent: React.FC = () => {
                     return true;
                   }
 
-                  // For inbox and other cases, apply the original today task filtering
+                  // For inbox and other cases
                   if (selectedSidebar === "inbox") {
                     return true;
                   }
@@ -394,12 +432,20 @@ const MainContent: React.FC = () => {
                     title={task.title}
                     isCompleted={task.isCompleted}
                     isStarred={task.isStarred}
+                    dueDate={task.dueDate}
+                    dueTime={task.dueTime}
                     onToggleComplete={() =>
                       toggleTaskComplete(section.id, task.id)
                     }
                     onToggleStar={() => toggleTaskStar(section.id, task.id)}
                     onTitleChange={(newTitle) =>
                       updateTaskTitle(section.id, task.id, newTitle)
+                    }
+                    onDateChange={(newDate) =>
+                      updateTaskDate(section.id, task.id, newDate)
+                    }
+                    onTimeChange={(newTime) =>
+                      updateTaskTime(section.id, task.id, newTime)
                     }
                   />
                 ))}

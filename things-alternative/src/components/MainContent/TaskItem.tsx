@@ -8,9 +8,13 @@ interface TaskItemProps {
   isCompleted?: boolean;
   isStarred?: boolean;
   notes?: string;
+  dueDate?: Date;
+  dueTime?: string;
   onToggleComplete?: () => void;
   onToggleStar?: () => void;
   onTitleChange?: (newTitle: string) => void;
+  onDateChange?: (newDate: Date) => void;
+  onTimeChange?: (newTime: string | undefined) => void;
 }
 
 const Container = styled.div({
@@ -182,10 +186,27 @@ const TaskItem: React.FC<TaskItemProps> = ({
   isCompleted = false,
   isStarred = false,
   notes,
+  dueDate,
+  dueTime,
   onToggleComplete,
   onToggleStar,
   onTitleChange,
+  onDateChange,
+  onTimeChange,
 }) => {
+  const formatDateForInput = (date: Date) => {
+    return date.toISOString().split("T")[0];
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newDate = new Date(e.target.value);
+    onDateChange?.(newDate);
+  };
+
+  const handleTimeChange = (value: string | null) => {
+    onTimeChange?.(value || undefined);
+  };
+
   return (
     <Container>
       <Checkbox onClick={onToggleComplete}>
@@ -200,6 +221,25 @@ const TaskItem: React.FC<TaskItemProps> = ({
           isCompleted={isCompleted}
         />
         {notes && <Notes>{notes}</Notes>}
+        {dueDate && (
+          <DateTimeContainer>
+            <DateInput
+              type="date"
+              value={formatDateForInput(dueDate)}
+              onChange={handleDateChange}
+            />
+            <TimePickerWrapper>
+              <TimePicker
+                onChange={handleTimeChange}
+                value={dueTime}
+                disableClock={true}
+                clearIcon={null}
+                clockIcon={null}
+                format="h:mm a"
+              />
+            </TimePickerWrapper>
+          </DateTimeContainer>
+        )}
       </Content>
       <Actions className="task-actions">
         <StarButton isStarred={isStarred} onClick={onToggleStar}>

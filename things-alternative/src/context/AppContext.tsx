@@ -32,6 +32,12 @@ interface AppContextType {
     taskId: string,
     newTitle: string
   ) => void;
+  updateTaskDate: (sectionId: string, taskId: string, newDate: Date) => void;
+  updateTaskTime: (
+    sectionId: string,
+    taskId: string,
+    newTime: string | undefined
+  ) => void;
   updateSectionDate: (sectionId: string, newDate: Date) => void;
   updateSectionTime: (sectionId: string, newTime: string | undefined) => void;
 }
@@ -109,21 +115,21 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   };
 
   const addTask = (sectionId: string) => {
-    const newTask: Task = {
-      id: Date.now().toString(),
-      title: "",
-      isCompleted: false,
-      isStarred: false,
-      dueDate: new Date(),
-      dueTime: undefined,
-    };
-
     setSections((prev) =>
-      prev.map((section) =>
-        section.id === sectionId
-          ? { ...section, tasks: [...section.tasks, newTask] }
-          : section
-      )
+      prev.map((section) => {
+        if (section.id === sectionId) {
+          const newTask: Task = {
+            id: Date.now().toString(),
+            title: "",
+            isCompleted: false,
+            isStarred: false,
+            dueDate: section.dueDate, // Inherit section's due date
+            dueTime: section.dueTime, // Inherit section's due time
+          };
+          return { ...section, tasks: [...section.tasks, newTask] };
+        }
+        return section;
+      })
     );
   };
 
@@ -180,6 +186,44 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     );
   };
 
+  const updateTaskDate = (
+    sectionId: string,
+    taskId: string,
+    newDate: Date
+  ) => {
+    setSections((prev) =>
+      prev.map((section) =>
+        section.id === sectionId
+          ? {
+              ...section,
+              tasks: section.tasks.map((task) =>
+                task.id === taskId ? { ...task, dueDate: newDate } : task
+              ),
+            }
+          : section
+      )
+    );
+  };
+
+  const updateTaskTime = (
+    sectionId: string,
+    taskId: string,
+    newTime: string | undefined
+  ) => {
+    setSections((prev) =>
+      prev.map((section) =>
+        section.id === sectionId
+          ? {
+              ...section,
+              tasks: section.tasks.map((task) =>
+                task.id === taskId ? { ...task, dueTime: newTime } : task
+              ),
+            }
+          : section
+      )
+    );
+  };
+
   const updateSectionDate = (sectionId: string, newDate: Date) => {
     setSections((prev) =>
       prev.map((section) =>
@@ -220,6 +264,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     toggleTaskComplete,
     toggleTaskStar,
     updateTaskTitle,
+    updateTaskDate,
+    updateTaskTime,
     updateSectionDate,
     updateSectionTime,
   };
