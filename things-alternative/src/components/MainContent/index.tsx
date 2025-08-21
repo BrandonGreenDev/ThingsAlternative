@@ -196,22 +196,27 @@ const MainContent: React.FC = () => {
       const sectionDateStr = section.dueDate.toISOString().split("T")[0];
       const taskCount = section.tasks.length;
 
+      // Inbox shows all sections
       inboxCount += taskCount;
 
+      // Today - sections due today
       if (sectionDateStr === todayStr) {
         todayCount += taskCount;
       }
 
+      // Upcoming - sections due in the future
       if (section.dueDate > today) {
         upcomingCount += taskCount;
       }
 
+      // Someday - sections due more than 7 days from now
       if (
         section.dueDate > new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
       ) {
         somedayCount += taskCount;
       }
 
+      // Logbook - sections with completed tasks
       const completedTasks = section.tasks.filter(
         (task) => task.isCompleted
       ).length;
@@ -219,6 +224,7 @@ const MainContent: React.FC = () => {
         logbookCount += completedTasks;
       }
 
+      // Projects - sections that match project names
       if (section.title.toLowerCase().includes("family")) {
         familyCount += taskCount;
       }
@@ -375,6 +381,7 @@ const MainContent: React.FC = () => {
                     return true;
                   }
 
+                  // For inbox and other cases, apply the original today task filtering
                   if (selectedSidebar === "inbox") {
                     return true;
                   }
